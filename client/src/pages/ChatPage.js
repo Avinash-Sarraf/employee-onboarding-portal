@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getUser } from "../utils/auth";
 import api from "../api/client";
@@ -29,8 +29,8 @@ function sortConversationsByActivity(list) {
 }
 
 const ChatPage = () => {
-  const user = getUser();
-  const userId = user?.id || null;
+  const [authTick, setAuthTick] = useState(0);
+  const user = useMemo(() => getUser(), [authTick]);
   const navigate = useNavigate();
   const toast = useToast();
   const isHr = user?.role === "hr";
@@ -52,6 +52,12 @@ const ChatPage = () => {
 
   const activeIdRef = useRef(null);
   const lastMsgCreatedRef = useRef(null);
+
+  useEffect(() => {
+    const bump = () => setAuthTick((t) => t + 1);
+    window.addEventListener("app:auth-changed", bump);
+    return () => window.removeEventListener("app:auth-changed", bump);
+  }, []);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -76,12 +82,12 @@ const ChatPage = () => {
   }, [toast]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!user) return;
     loadConversations();
-  }, [userId, loadConversations]);
+  }, [user?.id, loadConversations]);
 
   useEffect(() => {
-    if (!userId || !isHr) return;
+    if (!user || !isHr) return;
     (async () => {
       try {
         const res = await api.get("/profile");
@@ -96,7 +102,7 @@ const ChatPage = () => {
         setEmployees([]);
       }
     })();
-  }, [userId, isHr]);
+  }, [user?.id, isHr]);
 
   useEffect(() => {
     if (convLoading || isHr || !conversations.length || activeId) return;
@@ -180,13 +186,13 @@ const ChatPage = () => {
   }, [msgLoading, loadConversations]);
 
   useEffect(() => {
-    if (!userId || !activeId) return undefined;
+    if (!user || !activeId) return undefined;
     const id = window.setInterval(pollNew, POLL_MS);
     return () => window.clearInterval(id);
-  }, [userId, activeId, pollNew]);
+  }, [user?.id, activeId, pollNew]);
 
   useEffect(() => {
-    if (!userId) return undefined;
+    if (!user) return undefined;
     const socket = getNotificationSocket();
     if (!socket) return undefined;
 
@@ -216,7 +222,7 @@ const ChatPage = () => {
     return () => {
       socket.off("chat:message", onChatMessage);
     };
-  }, [userId, isHr, loadConversations, upsertConversation]);
+  }, [user?.id, isHr, loadConversations, upsertConversation]);
 
   const loadOlder = async () => {
     if (!activeId || !messages.length || loadingOlder) return;
@@ -242,28 +248,37 @@ const ChatPage = () => {
   };
 
   const openWithEmployee = async (employeeUserId) => {
-    if (!employeeUserId) return;
-    try {
-      const res = await api.post("/chat/conversations/ensure", {
-        employeeUserId,
-      });
-      const row = res.data?.data;
-      if (!row?.id) throw new Error("empty");
-      setConversations((prev) => {
-        const idx = prev.findIndex((c) => c.id === row.id);
-        if (idx >= 0) {
-          const copy = [...prev];
-          copy[idx] = { ...copy[idx], ...row };
-          return copy;
-        }
-        return [{ ...row }, ...prev];
-      });
-      setActiveId(row.id);
-      setPickEmployee("");
-    } catch (e) {
-      toast.error(getApiErrorMessage(e, "Could not open chat."));
-    }
-  };
+  if (!employeeUserId) return;
+
+  try {
+    const res = await api.post("/chat/conversations/ensure", {
+      employeeUserId,
+    });
+
+    const row = res.data?.data;
+
+    if (!row?.id) throw new Error("empty");
+
+    setConversations((prev) => {
+      const idx = prev.findIndex((c) => c.id === row.id);
+
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], ...row };
+        return copy;
+      }
+
+      return [{ ...row }, ...prev];
+    });
+
+    setActiveId(row.id);
+
+    // Keep the selected employee in the dropdown
+    setPickEmployee(employeeUserId);
+  } catch (e) {
+    toast.error(getApiErrorMessage(e, "Could not open chat."));
+  }
+};
 
   const send = async (e) => {
     e.preventDefault();
@@ -311,6 +326,7 @@ const ChatPage = () => {
             onSelect={setActiveId}
             loading={convLoading}
             title={isHr ? "Employee threads" : "Your thread"}
+            isHr={isHr}
             className={cn(activeId ? "hidden md:flex" : "flex")}
           >
             {isHr ? (
@@ -357,15 +373,15 @@ const ChatPage = () => {
                       <ArrowLeft className="h-5 w-5" />
                     </button>
                     <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                      {activeConv.employeeName}
-                    </p>
+  {isHr ? (activeConv?.employeeName || "Employee") : "HR Administrator"}
+</p>
                   </div>
                   <p className="hidden text-sm font-semibold text-slate-900 dark:text-white md:block">
-                    {activeConv.employeeName}
-                  </p>
+  {isHr ? (activeConv?.employeeName || "Employee") : "HR Administrator"}
+</p>
                   <p className="text-xs text-slate-500 dark:text-slate-500">
-                    {activeConv.employeeEmail}
-                  </p>
+  {isHr ? (activeConv?.employeeEmail || "") : "hr@company.com"}
+</p>
                 </>
               ) : (
                 <p className="text-sm text-slate-500 dark:text-slate-400">

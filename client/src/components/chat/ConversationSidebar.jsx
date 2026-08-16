@@ -10,6 +10,7 @@ export function ConversationSidebar({
   title = "Conversations",
   children,
   className,
+  isHr,
 }) {
   return (
     <aside
@@ -48,10 +49,12 @@ export function ConversationSidebar({
                   >
                     <span className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
                       <MessageSquare className="h-4 w-4 shrink-0 opacity-70" />
-                      <span className="truncate">{c.employeeName || "Employee"}</span>
+                      <span className="truncate">
+                        {isHr ? (c.employeeName || "Employee") : "HR Administrator"}
+                      </span>
                     </span>
                     <span className="mt-0.5 truncate pl-6 text-xs text-slate-500">
-                      {c.employeeEmail || c.employeeUserId}
+                      {isHr ? (c.employeeEmail || "") : "hr@company.com"}
                     </span>
                     {c.lastMessagePreview ? (
                       <span className="mt-1 line-clamp-2 pl-6 text-xs text-slate-600 dark:text-slate-400">
