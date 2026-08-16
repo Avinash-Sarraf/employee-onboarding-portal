@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply m-0 min-h-screen bg-slate-50 text-slate-900 transition-colors duration-200 ease-out dark:bg-slate-950 dark:text-slate-100;
+  }
+
+
+  ::selection {
+    @apply bg-indigo-500/25 text-inherit dark:bg-indigo-400/30;
+  }
+}
+
+/* Public marketing hero (optional utility) */
+.bg-main {
+  @apply relative overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/40;
+}
+
+.bg-main::before,
+.bg-main::after {
+  content: "";
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 9999px;
+  filter: blur(120px);
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.bg-main::before {
+  @apply bg-indigo-400 dark:bg-indigo-600;
+  top: -100px;
+  left: -100px;
+}
+
+.bg-main::after {
+  @apply bg-sky-400 dark:bg-sky-700;
+  bottom: -100px;
+  right: -100px;
+}
+
+select option {
+  @apply bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100;
+}
+
+/* Hide browser password reveal so only our toggle shows */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+input[type="date"],
+.date-input {
+  color-scheme: light;
+}
+
+.dark input[type="date"],
+.dark .date-input {
+  color-scheme: dark;
+}
